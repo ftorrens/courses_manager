@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Course;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
+use App\Http\Resources\CourseResource;
 
 class CourseController extends Controller
 {
@@ -16,17 +17,31 @@ class CourseController extends Controller
     {
         $validated = $request->validate([
             'orderby' => 'sometimes|in:id,title,price,created_at',
-            'direction' => 'sometimes|in:asc,desc'
+            'direction' => 'sometimes|in:asc,desc',
+            'min_price' => 'sometimes|numeric|min:0',
+            'max_price' => 'sometimes|numeric|min:0',
         ]);
 
         $orderby = $validated['orderby'] ?? 'title';
         $direction = $validated['direction'] ?? 'asc';
 
-        $courses = Course::with('instructor')
+        $query = Course::with('instructor')
+            ->withCount('lessons')
+            ->withAvg('ratings', 'score');
+
+        if ($request->filled('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+
+        if ($request->filled('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        $courses = $query
             ->orderBy($orderby, $direction)
             ->paginate(10);
 
-        return $courses;
+        return CourseResource::collection($courses);
     }
 
     /**
@@ -36,7 +51,9 @@ class CourseController extends Controller
     {
         $course = Course::create($request->validated());
 
-        return response()->json($course, 201);
+        return (new CourseResource($course))
+                ->response()
+                ->setStatusCode(201);
     }
 
     /**
@@ -44,13 +61,16 @@ class CourseController extends Controller
      */
     public function show($id)
     {
-        $course = Course::with('instructor', 'lessons')->find($id);
+        $course = Course::with('instructor')
+            ->withCount('lessons')
+            ->withAvg('ratings','score')
+            ->find($id);
 
         if (!$course) {
             return response()->json(['error' => 'Course not found'], 404);
         }
 
-        return response()->json($course);
+        return new CourseResource($course);
     }
 
     /**
@@ -66,7 +86,9 @@ class CourseController extends Controller
 
         $course->update($request->validated());
 
-        return response()->json($course);
+        $course->load('instructor');
+
+        return new CourseResource($course);
     }
 
     /**
