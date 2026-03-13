@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Course;
+use App\Models\Instructor;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -20,7 +21,8 @@ class CourseFactory extends Factory
         return [
             'title' => fake()->sentence(3),
             'description' => fake()->paragraph(),
-            'price' => fake()->randomFloat(2, 10, 200)
+            'price' => fake()->randomFloat(2, 10, 200),
+            'instructor_id' => Instructor::factory()
         ];
     }
 }
