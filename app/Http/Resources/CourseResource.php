@@ -21,8 +21,7 @@ class CourseResource extends JsonResource
             ],
 
             'lessons_count' => $this->lessons_count,
-            'rating_avg' => round($this->ratings_avg_score ?? 0, 2),
-
+            'rating_avg' => $this->when(isset($this->rating_avg), round($this->rating_avg, 2)),
             'created_at' => $this->created_at
         ];
     }

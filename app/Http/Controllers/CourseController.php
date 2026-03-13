@@ -8,13 +8,14 @@ use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Http\Resources\CourseResource;
 use App\Models\Instructor;
+use App\Services\CourseRatingService;
 
 class CourseController extends Controller
 {
     /**
      * Return a listing of the courses.
      */
-    public function index(Request $request)
+    public function index(Request $request, CourseRatingService $ratingService)
     {
         $validated = $request->validate([
             'orderby' => 'sometimes|in:id,title,price,created_at',
@@ -41,15 +42,23 @@ class CourseController extends Controller
             ->orderBy($orderby, $direction)
             ->paginate(10);
 
+        // Add rating_avg to each course
+        $courses->getCollection()->transform(function($course) use ($ratingService) {
+            $course->rating_avg = $ratingService->getAverage($course);
+            return $course;
+        });
+
         return CourseResource::collection($courses);
     }
 
     /**
      * Store a newly created course in storage.
      */
-    public function store(StoreCourseRequest $request)
+    public function store(StoreCourseRequest $request, CourseRatingService $ratingService)
     {
         $course = Course::create($request->validated());
+
+        $course->rating_avg = $ratingService->getAverage($course);
 
         return (new CourseResource($course))
             ->response()
@@ -59,20 +68,23 @@ class CourseController extends Controller
     /**
      * Display the specified course.
      */
-    public function show(Course $course)
+    public function show(Course $course, CourseRatingService $ratingService)
     {
-        $course->loadCount('lessons')
-               ->loadAvg('ratings', 'score');
+        $course->load('lessons');
+        $course->rating_avg = $ratingService->getAverage($course);
 
-        return new CourseResource($course);
+        $resource = new CourseResource($course);
+
+        return $resource;
     }
 
     /**
      * Update the specified course in storage.
      */
-    public function update(UpdateCourseRequest $request, Course $course)
+    public function update(UpdateCourseRequest $request, Course $course, CourseRatingService $ratingService)
     {
         $course->update($request->validated());
+        $course->rating_avg = $ratingService->getAverage($course);
 
         return new CourseResource($course);
     }
