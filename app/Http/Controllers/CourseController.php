@@ -7,11 +7,12 @@ use App\Models\Course;
 use App\Http\Requests\StoreCourseRequest;
 use App\Http\Requests\UpdateCourseRequest;
 use App\Http\Resources\CourseResource;
+use App\Models\Instructor;
 
 class CourseController extends Controller
 {
     /**
-     * Display a listing of the courses.
+     * Return a listing of the courses.
      */
     public function index(Request $request)
     {
@@ -86,5 +87,20 @@ class CourseController extends Controller
         return response()->json([
             'message' => 'Course deleted'
         ]);
+    }
+
+    /**
+     * Return a listing of the instructors.
+     */
+    // TODO: For production, move this function to its own controller, e.g., InstructorController.
+    // This will separate instructor-related logic from courses and follow RESTful conventions.
+    public function instructors()
+    {
+        $instructors = Instructor::query()
+            ->select(['id','name'])
+            ->orderBy('id')
+            ->paginate(50);
+
+        return response()->json($instructors);
     }
 }
