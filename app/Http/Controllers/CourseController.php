@@ -25,8 +25,7 @@ class CourseController extends Controller
         $orderby = $validated['orderby'] ?? 'title';
         $direction = $validated['direction'] ?? 'asc';
 
-        $query = Course::with('instructor')
-            ->withCount('lessons')
+        $query = Course::withCount('lessons')
             ->withAvg('ratings', 'score');
 
         if ($request->filled('min_price')) {
@@ -52,23 +51,17 @@ class CourseController extends Controller
         $course = Course::create($request->validated());
 
         return (new CourseResource($course))
-                ->response()
-                ->setStatusCode(201);
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
      * Display the specified course.
      */
-    public function show($id)
+    public function show(Course $course)
     {
-        $course = Course::with('instructor')
-            ->withCount('lessons')
-            ->withAvg('ratings','score')
-            ->find($id);
-
-        if (!$course) {
-            return response()->json(['error' => 'Course not found'], 404);
-        }
+        $course->loadCount('lessons')
+               ->loadAvg('ratings', 'score');
 
         return new CourseResource($course);
     }
@@ -76,17 +69,9 @@ class CourseController extends Controller
     /**
      * Update the specified course in storage.
      */
-    public function update(UpdateCourseRequest $request, $id)
+    public function update(UpdateCourseRequest $request, Course $course)
     {
-        $course = Course::find($id);
-
-        if (!$course) {
-            return response()->json(['error' => 'Course not found'], 404);
-        }
-
         $course->update($request->validated());
-
-        $course->load('instructor');
 
         return new CourseResource($course);
     }
@@ -94,16 +79,12 @@ class CourseController extends Controller
     /**
      * Remove the specified course from storage.
      */
-    public function destroy($id)
+    public function destroy(Course $course)
     {
-        $course = Course::find($id);
-
-        if (!$course) {
-            return response()->json(['error' => 'Course not found'], 404);
-        }
-
         $course->delete();
 
-        return response()->json(['message' => 'Course deleted']);
+        return response()->json([
+            'message' => 'Course deleted'
+        ]);
     }
 }
